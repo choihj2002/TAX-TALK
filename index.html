@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>세법말문제</title>
+<meta name="description" content="공인회계사 1차 세법개론 기출 말문제(2017~2026) 풀이와 OX 복습">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600;800&family=Noto+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><circle cx='32' cy='32' r='28' fill='none' stroke='%23b3261e' stroke-width='5'/><text x='32' y='42' font-size='28' text-anchor='middle' fill='%23b3261e' font-family='serif' font-weight='bold'>稅</text></svg>">
+</head>
+<body>
+<header class="masthead">
+  <div class="mast-inner">
+    <button class="brand" data-go="home" aria-label="처음으로">
+      <span class="seal">稅</span>
+      <span class="brand-text">
+        <span class="brand-title">세법말문제</span>
+        <span class="brand-sub">공인회계사 1차 · 세법개론 기출 말문제 2017–2026</span>
+      </span>
+    </button>
+    <nav class="mast-nav">
+      <button class="nav-btn" data-go="home">출제 설정</button>
+      <button class="nav-btn" id="historyBtn">히스토리 <span class="pill" id="histCount">0</span></button>
+      <button class="nav-btn" data-go="ox">OX 장부 <span class="pill" id="oxCount">0</span></button>
+    </nav>
+  </div>
+  <div class="mast-rule"><span>제 1 호 서식</span><span>〈 세법말문제 기출 고지서 〉</span><span id="todayStr"></span></div>
+</header>
+
+<main id="app">
+  <!-- HOME -->
+  <section class="view" id="view-home">
+    <div class="form-sheet">
+      <div class="sheet-head">
+        <h1>출제 신청서</h1>
+        <p>풀이할 연도와 세목을 고른 뒤 순서를 정해 주세요.</p>
+      </div>
+      <table class="form-table">
+        <tr>
+          <th>① 귀속연도</th>
+          <td>
+            <div class="chips" id="yearChips"></div>
+            <div class="mini-actions"><button data-all="year">전체</button><button data-none="year">해제</button></div>
+          </td>
+        </tr>
+        <tr>
+          <th>② 세　　목</th>
+          <td>
+            <div class="chips" id="subjChips"></div>
+            <div class="mini-actions"><button data-all="subj">전체</button><button data-none="subj">해제</button></div>
+          </td>
+        </tr>
+        <tr>
+          <th>③ 문제유형</th>
+          <td><div class="chips" id="typeChips"></div></td>
+        </tr>
+        <tr>
+          <th>④ 출제순서</th>
+          <td>
+            <div class="seg" id="orderSeg">
+              <button data-order="seq" class="on">순서대로</button>
+              <button data-order="rand">랜덤</button>
+            </div>
+            <p class="hint" id="orderHint">연도 최신순 → 문항번호순으로 출제합니다.</p>
+          </td>
+        </tr>
+        <tr class="total-row">
+          <th>합계 문항</th>
+          <td><strong id="poolCount">0</strong> 문항</td>
+        </tr>
+      </table>
+      <div class="sheet-foot">
+        <button class="btn primary big" id="startBtn">풀이 시작</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- QUIZ -->
+  <section class="view" id="view-quiz" hidden>
+    <div class="quiz-top">
+      <div class="progress"><div class="bar" id="progBar"></div></div>
+      <span class="prog-text" id="progText"></span>
+    </div>
+    <article class="qcard" id="qcard"></article>
+    <div class="quiz-nav">
+      <button class="btn" id="prevBtn">이전</button>
+      <button class="btn primary" id="submitBtn">제출</button>
+      <button class="btn" id="nextBtn">다음</button>
+    </div>
+  </section>
+
+  <!-- DONE -->
+  <section class="view" id="view-done" hidden>
+    <div class="form-sheet receipt">
+      <div class="sheet-head"><h1>납부 확인서</h1><p>이번 출제분을 모두 풀었어요.</p></div>
+      <div class="receipt-body" id="doneBody"></div>
+      <div class="sheet-foot">
+        <button class="btn" id="doneWrongBtn">틀린 문제만 다시 풀기</button>
+        <button class="btn primary" data-go="home">새로 출제</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- OX -->
+  <section class="view" id="view-ox" hidden>
+    <div class="form-sheet">
+      <div class="sheet-head">
+        <h1>OX 장부</h1>
+        <p>선지 옆 ⊕ 버튼으로 담아 둔 지문이에요. 이 브라우저에 저장됩니다.</p>
+      </div>
+      <div class="ox-actions">
+        <button class="btn primary" id="oxStartBtn">OX 풀기</button>
+        <div class="seg" id="oxOrderSeg">
+          <button data-order="rand" class="on">랜덤</button>
+          <button data-order="seq">담은 순서</button>
+        </div>
+      </div>
+      <ul class="ledger" id="oxList"></ul>
+    </div>
+  </section>
+
+  <!-- OX QUIZ -->
+  <section class="view" id="view-oxquiz" hidden>
+    <div class="quiz-top">
+      <div class="progress"><div class="bar" id="oxProgBar"></div></div>
+      <span class="prog-text" id="oxProgText"></span>
+    </div>
+    <article class="qcard ox-card" id="oxCard"></article>
+    <div class="quiz-nav">
+      <button class="btn" data-go="ox">장부로</button>
+      <button class="btn primary" id="oxNextBtn" hidden>다음</button>
+    </div>
+  </section>
+</main>
+
+<!-- HISTORY DRAWER -->
+<aside class="drawer" id="drawer" aria-hidden="true">
+  <div class="drawer-panel" role="dialog" aria-label="히스토리">
+    <div class="drawer-head">
+      <h2>이번 세션 히스토리</h2>
+      <button class="x" id="drawerClose" aria-label="닫기">×</button>
+    </div>
+    <div class="hist-stats" id="histStats"></div>
+    <div class="drawer-actions">
+      <button class="btn primary" id="retryWrongBtn">틀린 문제만 다시 풀기</button>
+      <button class="btn ghost" id="clearHistBtn">기록 비우기</button>
+    </div>
+    <ol class="hist-list" id="histList"></ol>
+  </div>
+</aside>
+
+<div class="toast" id="toast" role="status"></div>
+<footer class="foot">자료: 금융감독원 공인회계사시험 기출문제(1형) · 정/부 표시는 확정답안 기준</footer>
+<script src="questions.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
