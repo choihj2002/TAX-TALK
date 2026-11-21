@@ -9,4 +9,10 @@ window.SUPABASE_CONFIG = {
     google: true,
     kakao: true,
   },
+  // 관리자 로그인: 로그인 창의 이메일 칸에 id를 적으면 아래 email 계정으로 로그인해요.
+  // 비밀번호는 여기 적지 않아요. Supabase 대시보드에서 이 이메일로 사용자를 만들 때 정해요.
+  admin: {
+    id: 'admin',
+    email: 'admin@tax-talk.app',
+  },
 };

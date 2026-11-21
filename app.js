@@ -35,6 +35,7 @@
     $$('.view').forEach((v) => (v.hidden = v.id !== 'view-' + view));
     window.scrollTo({ top: 0 });
     if (view === 'ox') renderOxList();
+    if (view === 'oxstar') renderStarCards();
     if (view === 'mock') renderMock();
     if (view === 'home') updatePool();
     if (view === 'inbox') { renderBoard(); loadInquiries(); }
@@ -109,6 +110,7 @@
   });
 
   function startQuiz(list, label = '', mock = null) {
+    list = (list || []).filter(Boolean);
     if (!list.length) { toast('풀 문제가 없어요'); return; }
     state.queue = list.map((q) => q.id);
     state.idx = 0; state.answers = {};
@@ -247,7 +249,7 @@
     const right = done.filter((id) => state.answers[id].correct).length;
     const bySubj = {};
     done.forEach((id) => {
-      const s = byId.get(id).subject;
+      const s = (byId.get(id) || {}).subject; if (!s) return;
       bySubj[s] = bySubj[s] || [0, 0]; bySubj[s][1]++; if (state.answers[id].correct) bySubj[s][0]++;
     });
     const rows = SUBJ_ORDER.filter((s) => bySubj[s]).map((s) => `<tr><td>${SUBJ[s]}</td><td>${bySubj[s][0]} / ${bySubj[s][1]}</td></tr>`).join('');
@@ -579,12 +581,53 @@
   function labelText(o) { return labelShow(o.label); }
   function renderOxList() {
     $('#oxStartBtn').disabled = !state.ox.length;
+    updateStarBtn();
     $('#oxList').innerHTML = state.ox.length ? state.ox.map((o) => {
       const q = byId.get(o.id);
-      return `<li><span class="src">${q.year}-${String(q.no).padStart(2, '0')} ${labelText(o)}<br>${q.subject}</span><span class="t">${esc(o.text)}</span><button class="del" data-del="${esc(o.key)}" aria-label="삭제">×</button></li>`;
+      return `<li${o.starred ? ' class="starred"' : ''}><span class="src">${q.year}-${String(q.no).padStart(2, '0')} ${labelText(o)}<br>${q.subject}</span><span class="t">${esc(statementFor(o.key).text)}</span><button class="star${o.starred ? ' on' : ''}" data-star="${esc(o.key)}" aria-label="${o.starred ? '별표 빼기' : '별표 달기'}" title="${o.starred ? '별표 빼기' : '별표 달기'}">${o.starred ? '★' : '☆'}</button><button class="del" data-del="${esc(o.key)}" aria-label="삭제">×</button></li>`;
     }).join('') : '<li class="empty">아직 담은 지문이 없어요. 문제 풀이 중 선지 옆 ⊕ 버튼을 눌러 보세요.</li>';
   }
+  // ---------- 별표 ----------
+  function starStoreKey() { return state.user ? 'oxStars_' + state.user.id : 'oxStarsLocal'; }
+  function starCount() { return state.ox.filter((o) => o.starred).length; }
+  function updateStarBtn() {
+    const b = $('#oxStarViewBtn'); if (!b) return;
+    const n = starCount(); b.disabled = !n; $('#oxStarCount').textContent = n;
+  }
+  function toggleStar(key) {
+    const o = state.ox.find((x) => x.key === key); if (!o) return;
+    o.starred = !o.starred;
+    if (!state.user) LS.set('oxBank', state.ox);
+    else if (state.starCol) cloud.setStar(key, o.starred).catch(() => toast('별표를 계정에 저장하지 못했어요'));
+    else LS.set(starStoreKey(), state.ox.filter((x) => x.starred).map((x) => x.key));
+    toast(o.starred ? '별표를 달았어요' : '별표를 뺐어요');
+  }
+  function renderStarCards() {
+    const list = state.ox.filter((o) => o.starred);
+    $('#starSub').textContent = list.length ? `별표한 지문 ${list.length}개 · 카드를 누르면 뒤집혀 답이 나와요.` : '별표한 지문이 없어요. OX 장부에서 ☆를 눌러 별표를 달아 보세요.';
+    $('#starGrid').innerHTML = list.map((o) => {
+      const q = byId.get(o.id); const st = statementFor(o.key);
+      const ek = /^\d$/.test(st.label) ? st.label : (GANA_REV[st.label] || st.label);
+      const ex = q.expl && q.expl[ek];
+      const src = `${SUBJ[q.subject]} · ${q.year}년 ${q.no}번 ${labelShow(st.label)}`;
+      return `<div class="flip" data-flip tabindex="0" role="button" aria-label="카드 뒤집기"><div class="flip-in">`
+        + `<div class="face front"><div class="fc-src">${src}</div><div class="fc-text">${esc(st.text)}</div><div class="fc-hint">눌러서 답 보기</div></div>`
+        + `<div class="face back ${st.ok ? 'is-o' : 'is-x'}"><div class="fc-src">${src}</div><div class="fc-ans"><span class="ox-mark">${st.ok ? OX_SVG.o : OX_SVG.x}</span>${st.ok ? '맞는 지문' : '틀린 지문'}</div>${ex ? `<div class="fc-expl">${esc(ex)}</div>` : ''}<div class="fc-hint">눌러서 앞면 보기</div></div>`
+        + `</div></div>`;
+    }).join('');
+  }
+  $('#starGrid').addEventListener('click', (e) => { const f = e.target.closest('[data-flip]'); if (f) f.classList.toggle('flipped'); });
+  $('#starGrid').addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('[data-flip]')) { e.preventDefault(); e.target.classList.toggle('flipped'); } });
+  $('#starFlipAll').addEventListener('click', () => {
+    const cards = $$('#starGrid .flip'); const anyFront = cards.some((c) => !c.classList.contains('flipped'));
+    cards.forEach((c) => c.classList.toggle('flipped', anyFront));
+  });
+  $('#starShuffle').addEventListener('click', () => {
+    const g = $('#starGrid'); shuffle([...g.children]).forEach((c) => { c.classList.remove('flipped'); g.appendChild(c); });
+  });
   $('#oxList').addEventListener('click', (e) => {
+    const sbtn = e.target.closest('[data-star]');
+    if (sbtn) { toggleStar(sbtn.dataset.star); renderOxList(); return; }
     const d = e.target.closest('[data-del]'); if (!d) return;
     state.ox = state.ox.filter((o) => o.key !== d.dataset.del); saveOxDel(d.dataset.del); updateCounts(); renderOxList();
   });
@@ -598,6 +641,10 @@
     state.oxIdx = 0; state.oxRight = 0; state.oxDone = false;
     show('oxquiz'); renderOx();
   });
+  const OX_SVG = {
+    o: '<svg class="oxi" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="34" fill="none" stroke="currentColor" stroke-width="13"/></svg>',
+    x: '<svg class="oxi" viewBox="0 0 100 100" aria-hidden="true"><path d="M22 22 L78 78 M78 22 L22 78" fill="none" stroke="currentColor" stroke-width="13" stroke-linecap="round"/></svg>',
+  };
   function renderOx(picked) {
     const total = state.oxQueue.length;
     if (state.oxIdx >= total) {
@@ -616,7 +663,7 @@
       `<div class="q-meta"><span class="tag subj">${SUBJ[q.subject]}</span><span class="tag">${q.year}년 ${q.no}번 ${labelText(o)}</span><button class="ask-btn" data-ox-ask="${esc(o.key)}">질문하기</button></div>` +
       `<div class="q-stem">${esc(statementFor(key).text)}</div>` +
       `<div class="ox-ctx">원문 발문: ${esc(o.stem)}</div>` +
-      `<div class="ox-btns"><button class="ox-btn o${answered && picked === true ? ' picked' : ''}" data-ox="1" ${answered ? 'disabled' : ''}>O</button><button class="ox-btn x${answered && picked === false ? ' picked' : ''}" data-ox="0" ${answered ? 'disabled' : ''}>X</button></div>` +
+      `<div class="ox-btns"><button class="ox-btn o${answered && picked === true ? ' picked' : ''}" data-ox="1" aria-label="O (맞는 지문)" ${answered ? 'disabled' : ''}>${OX_SVG.o}</button><button class="ox-btn x${answered && picked === false ? ' picked' : ''}" data-ox="0" aria-label="X (틀린 지문)" ${answered ? 'disabled' : ''}>${OX_SVG.x}</button></div>` +
       (answered ? `<div class="ox-result" style="color:var(${correct ? '--ok' : '--seal'})">${correct ? '정답' : '오답'} · 이 지문은 <b>${o.ok ? 'O (맞는 지문)' : 'X (틀린 지문)'}</b>이에요.</div>${explHtml(q, /^\d$/.test(o.label) ? o.label : (GANA_REV[o.label] || o.label))}<div class="stamp show ${correct ? 'ok' : 'no'}">${correct ? '정답' : '오답'}</div>` : '');
     $('#oxNextBtn').hidden = !answered;
   }
@@ -666,9 +713,18 @@
       return out;
     },
     async loadOx() {
-      const { data, error } = await sb.from('ox_notes').select('key,added_at').order('added_at', { ascending: true });
+      let { data, error } = await sb.from('ox_notes').select('key,added_at,starred').order('added_at', { ascending: true });
+      if (error) {
+        // starred 열이 아직 없으면(SQL 미실행) 별표는 이 기기에만 저장
+        state.starCol = false;
+        ({ data, error } = await sb.from('ox_notes').select('key,added_at').order('added_at', { ascending: true }));
+        if (error) throw error;
+      } else state.starCol = true;
+      return data.map((r) => ({ key: r.key, at: Date.parse(r.added_at), starred: !!r.starred }));
+    },
+    async setStar(key, on) {
+      const { error } = await sb.from('ox_notes').update({ starred: on }).eq('user_id', state.user.id).eq('key', key);
       if (error) throw error;
-      return data.map((r) => ({ key: r.key, at: Date.parse(r.added_at) }));
     },
     async addHistory(list) {
       if (!list.length) return;
@@ -682,7 +738,11 @@
     },
     async addOx(list) {
       if (!list.length) return;
-      const rows = list.map((o) => ({ user_id: state.user.id, key: o.key, added_at: new Date(o.addedAt || Date.now()).toISOString() }));
+      const rows = list.map((o) => {
+        const r = { user_id: state.user.id, key: o.key, added_at: new Date(o.addedAt || Date.now()).toISOString() };
+        if (state.starCol && o.starred) r.starred = true;
+        return r;
+      });
       const { error } = await sb.from('ox_notes').upsert(rows, { onConflict: 'user_id,key', ignoreDuplicates: true });
       if (error) throw error;
     },
@@ -729,7 +789,8 @@
       const [hist, ox] = await Promise.all([cloud.loadHistory(), cloud.loadOx()]);
       if (!state.user || state.user.id !== user.id) return;
       state.history = hist.filter((h) => byId.has(h.id));
-      state.ox = ox.map((r) => oxFromKey(r.key, r.at)).filter(Boolean);
+      const localStars = new Set(LS.get(starStoreKey(), []));
+      state.ox = ox.map((r) => { const o = oxFromKey(r.key, r.at); if (o) o.starred = state.starCol ? r.starred : localStars.has(r.key); return o; }).filter(Boolean);
       const moved = localHist.length + localOx.length;
       toast(moved ? `이 기기의 기록 ${moved}건을 계정으로 옮겼어요` : '계정 기록을 불러왔어요');
       checkAdmin(user);
@@ -837,7 +898,10 @@
   }
   $('#authForm').addEventListener('submit', (e) => {
     e.preventDefault();
-    const email = $('#authEmail').value.trim(); const pw = $('#authPw').value;
+    let email = $('#authEmail').value.trim(); const pw = $('#authPw').value;
+    // 관리자 로그인: 이메일 칸에 아이디(admin)를 적으면 관리자 이메일로 바꿔 로그인
+    const ADMIN_ID = (CFG.admin && CFG.admin.id) || 'admin';
+    if (authMode === 'signin' && CFG.admin && CFG.admin.email && email.toLowerCase() === ADMIN_ID.toLowerCase()) email = CFG.admin.email;
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { msg('이메일 주소를 확인해 주세요.', 'err'); return; }
     if (MODE[authMode].pw && pw.length < 6) { msg('비밀번호는 6자 이상이어야 해요.', 'err'); return; }
     busy($('#authSubmit'), async () => {
@@ -1068,7 +1132,7 @@
         <div class="inq-head"><span class="tag${r.kind === 'suggestion' ? '' : ' subj'}">${KIND[r.kind] || r.kind}</span>${tgt ? `<button class="inq-target" data-jump-q="${esc(r.question_id)}" title="이 문제 풀어 보기">${esc(tgt)}</button>` : ''}${isNew ? '<span class="inq-new">새 답변</span>' : ''}<span class="who">${esc(r.author || '회원')}${mine ? ' (나)' : ''}</span><span class="when">${fmtTime(r.created_at)}</span></div>
         ${quote ? `<div class="inq-quote">${esc(quote)}</div>` : ''}
         <div class="inq-body">${esc(r.body)}</div>
-        ${r.answer ? `<div class="inq-ans"><b>운영자 답변 · ${fmtTime(r.answered_at)}</b>${esc(r.answer)}</div>` : '<div class="inq-wait">답변 대기 중</div>'}
+        ${r.answer ? `<div class="inq-ans"><b>연신내기린아 답변 · ${fmtTime(r.answered_at)}</b>${esc(r.answer)}</div>` : '<div class="inq-wait">답변 대기 중</div>'}
         ${state.isAdmin ? (r.answer ? '<div class="inq-actions"><button data-reply-open>답변 수정</button><button data-reply-clear>답변 지우기</button><button data-inq-del>글 삭제</button></div>' : '')
           + `<div class="inq-reply"${r.answer ? ' hidden' : ''}><textarea data-reply-text placeholder="답변을 적어 주세요">${esc(r.answer || '')}</textarea><div class="inq-actions"><button class="btn primary" data-reply-save>${r.answer ? '수정 저장' : '답변 달기'}</button>${r.answer ? '' : '<button data-inq-del>글 삭제</button>'}</div></div>`
           : (mine && !r.answer ? '<div class="inq-actions"><button data-inq-del>삭제</button></div>' : '')}
@@ -1153,7 +1217,7 @@
     $('#qlistList').innerHTML = rows.length ? rows.map((r) => `<li>
         <div class="inq-head"><span class="tag${r.kind === 'suggestion' ? '' : ' subj'}">${KIND[r.kind] || r.kind}</span>${!label && r.option_label ? `<span class="tag">${labelShow(r.option_label)}</span>` : ''}<span class="who">${esc(r.author || '회원')}${me && r.user_id === me ? ' (나)' : ''}</span><span class="when">${fmtTime(r.created_at)}</span></div>
         <div class="inq-body">${esc(r.body)}</div>
-        ${r.answer ? `<div class="inq-ans"><b>운영자 답변 · ${fmtTime(r.answered_at)}</b>${esc(r.answer)}</div>` : '<div class="inq-wait">답변 대기 중</div>'}
+        ${r.answer ? `<div class="inq-ans"><b>연신내기린아 답변 · ${fmtTime(r.answered_at)}</b>${esc(r.answer)}</div>` : '<div class="inq-wait">답변 대기 중</div>'}
       </li>`).join('') : '<li class="empty">아직 질문이 없어요.</li>';
     $('#qlistAsk').textContent = label ? '이 선지에 질문하기' : '이 문제에 질문하기';
     $('#qlistModal').hidden = false;
@@ -1239,8 +1303,6 @@
   }
 
   // ---------- boot ----------
-  const d = new Date();
-  $('#todayStr').textContent = `${d.getFullYear()}. ${d.getMonth() + 1}. ${d.getDate()}.`;
   const data = window.QUESTIONS;
   if (!Array.isArray(data)) {
     $('#app').innerHTML = '<p style="text-align:center;padding:40px">문제 데이터(questions.js)를 불러오지 못했어요. index.html과 같은 폴더에 있는지 확인해 주세요.</p>';

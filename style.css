@@ -148,9 +148,15 @@ main{max-width:920px;margin:0 auto;padding:24px 16px 48px}
 .ox-card .q-stem{font-weight:400;font-size:17px}
 .ox-ctx{padding:0 18px;color:var(--muted);font-size:13px}
 .ox-btns{display:flex;gap:14px;justify-content:center;padding:18px}
-.ox-btn{width:110px;height:110px;border-radius:50%;border:3px solid var(--ink);background:#fff;font-family:var(--serif);font-size:52px;font-weight:800;line-height:1}
-.ox-btn.o{color:var(--ok);border-color:var(--ok)}
-.ox-btn.x{color:var(--seal);border-color:var(--seal)}
+.ox-btn{width:110px;height:110px;border-radius:50%;border:3px solid var(--ink);background:#fff;color:var(--ink);font-family:var(--sans);font-size:48px;font-weight:700;line-height:1;display:grid;place-items:center;padding:0}
+:root{--ox-o:#4f7d63;--ox-x:#a5483f}
+.ox-btns{gap:40px}
+.ox-btns .ox-btn.o,.ox-btns .ox-btn.x{border:0;background:transparent;box-shadow:none;border-radius:12px;width:112px;height:112px;padding:10px;transition:transform .12s,background .12s}
+.ox-btns .ox-btn.o{color:var(--ox-o)}
+.ox-btns .ox-btn.x{color:var(--ox-x)}
+.ox-btns .ox-btn:not(:disabled):hover{transform:scale(1.06);background:rgba(29,42,68,.05)}
+.ox-btns .ox-btn.picked{background:rgba(29,42,68,.07)}
+.oxi{width:100%;height:100%;display:block}
 .ox-btn:disabled{opacity:.35}
 .ox-btn.picked{opacity:1;box-shadow:0 0 0 6px rgba(29,42,68,.12)}
 .ox-result{text-align:center;padding:0 18px 18px;font-weight:700}
@@ -325,3 +331,29 @@ main{max-width:920px;margin:0 auto;padding:24px 16px 48px}
 
 /* PC: 로그인 버튼만 오른쪽 끝으로 */
 @media (min-width:561px){.mast-nav{flex:1 1 100%}.mast-nav .auth-btn{margin-left:auto}}
+
+/* ---------- 별표 · 별표 카드 ---------- */
+.ledger .star{background:none;border:0;color:var(--muted);font-size:20px;line-height:1;padding:0 4px}
+.ledger .star.on{color:var(--gold)}
+.ledger .star:hover{color:var(--gold)}
+.ledger li.starred{background:rgba(160,122,44,.07)}
+.star-view{margin-left:auto}
+.star-view:disabled{opacity:.45}
+.star-tools{display:flex;gap:8px}
+.star-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;padding:18px 20px 24px}
+.flip{perspective:1200px;cursor:pointer;outline:none;-webkit-tap-highlight-color:transparent}
+.flip:focus-visible .face{box-shadow:0 0 0 3px rgba(179,38,30,.35)}
+.flip-in{display:grid;transition:transform .45s cubic-bezier(.2,.7,.2,1);transform-style:preserve-3d;min-height:190px}
+.flip.flipped .flip-in{transform:rotateY(180deg)}
+.face{grid-area:1/1;backface-visibility:hidden;-webkit-backface-visibility:hidden;border:1px solid var(--rule);border-radius:6px;background:#fff;padding:14px 16px;display:flex;flex-direction:column;gap:10px;box-shadow:var(--shadow)}
+.face.back{transform:rotateY(180deg);background:var(--paper-2)}
+.fc-src{font-family:var(--mono);font-size:11.5px;color:var(--ink-2)}
+.fc-text{flex:1;font-size:15px;line-height:1.6}
+.fc-hint{font-size:11.5px;color:var(--muted);text-align:right}
+.fc-ans{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px}
+.ox-mark{width:40px;height:40px;display:block;flex:none}
+.face.back.is-o .fc-ans{color:var(--ox-o)}
+.face.back.is-x .fc-ans{color:var(--ox-x)}
+.fc-expl{flex:1;font-size:13.5px;line-height:1.6;color:var(--ink)}
+@media (max-width:560px){.star-grid{grid-template-columns:1fr;padding:14px}.star-view{margin-left:0;width:100%}.flip-in{min-height:170px}}
+@media (prefers-reduced-motion:reduce){.flip-in{transition:none}}
