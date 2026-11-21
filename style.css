@@ -322,3 +322,6 @@ main{max-width:920px;margin:0 auto;padding:24px 16px 48px}
 .rv-t{font-weight:700;color:var(--ink-2)}
 .rv-why,.rv-note{color:var(--ink-2);font-size:12.5px}
 .rv-note{margin-top:6px}
+
+/* PC: 로그인 버튼만 오른쪽 끝으로 */
+@media (min-width:561px){.mast-nav{flex:1 1 100%}.mast-nav .auth-btn{margin-left:auto}}

@@ -1,7 +1,13 @@
 [build]
   publish = "."
 
+# 배포 후 바로 새 파일을 받도록 매번 서버에 확인 (변경 없으면 304로 빠르게 응답)
 [[headers]]
-  for = "/questions.js"
+  for = "/*.js"
   [headers.values]
-    Cache-Control = "public, max-age=3600"
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/*.css"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
