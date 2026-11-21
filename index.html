@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
+  <meta name="google-site-verification" content="6J3tbrnP8OvcDL5Mzh1OjQP_XmoZ4oCfA0mt6JeFwUI" />
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>세법말문제</title>
@@ -23,8 +24,11 @@
     </button>
     <nav class="mast-nav">
       <button class="nav-btn" data-go="home">출제 설정</button>
+      <button class="nav-btn" data-go="mock">모의고사</button>
       <button class="nav-btn" id="historyBtn">히스토리 <span class="pill" id="histCount">0</span></button>
       <button class="nav-btn" data-go="ox">OX 장부 <span class="pill" id="oxCount">0</span></button>
+      <button class="nav-btn" data-go="inbox">질문게시판 <span class="pill" id="inqCount" hidden>0</span></button>
+      <button class="nav-btn auth-btn" id="authBtn"><span class="dot" aria-hidden="true"></span><span id="authBtnText">로그인</span></button>
     </nav>
   </div>
   <div class="mast-rule"><span>제 1 호 서식</span><span>〈 세법말문제 기출 고지서 〉</span><span id="todayStr"></span></div>
@@ -97,19 +101,46 @@
     <div class="form-sheet receipt">
       <div class="sheet-head"><h1>납부 확인서</h1><p>이번 출제분을 모두 풀었어요.</p></div>
       <div class="receipt-body" id="doneBody"></div>
+      <div class="sess-form done-save" id="doneSave">
+        <input id="doneSessName" maxlength="60" placeholder="세션 이름" aria-label="세션 이름">
+        <button class="btn" id="doneSaveBtn">세션으로 저장</button>
+      </div>
       <div class="sheet-foot">
         <button class="btn" id="doneWrongBtn">틀린 문제만 다시 풀기</button>
+        <button class="btn" id="doneMockBtn" data-go="mock" hidden>성적 추이 보기</button>
         <button class="btn primary" data-go="home">새로 출제</button>
       </div>
     </div>
   </section>
 
   <!-- OX -->
+  <section class="view" id="view-mock" hidden>
+    <div class="form-sheet">
+      <div class="sheet-head">
+        <h1>모의고사</h1>
+        <p>여러 연도 기출을 무작위로 섞어 한 회분을 만들어요.</p>
+      </div>
+      <table class="form-table">
+        <tr hidden><td><div id="mockYearChips"></div><p id="mockComp"></p></td></tr>
+        <tr>
+          <th>출제 방식</th>
+          <td><p class="hint" style="margin:0">세목별 문항 수는 실제 시험 비율대로 정하고, 문제는 전 연도에서 무작위로 뽑아요. 이전 모의고사에 나온 문제는 되도록 빼고 뽑아요. 국세기본법 → 법인세법 → 소득세법 → 부가가치세법 → 지방세법 순으로 출제하고, 처음 제출하면 "제 N회 모의고사"로 자동 저장돼요.</p></td>
+        </tr>
+      </table>
+      <div class="sheet-foot"><button class="btn primary big" id="mockStartBtn">모의고사 시작</button></div>
+    </div>
+    <div class="form-sheet mock-track">
+      <div class="sheet-head"><h1>성적 추이</h1><p id="mockTrackSub">회차별 점수(100점 환산)와 세목별 정답률이에요.</p></div>
+      <div class="mock-chart" id="mockChart"></div>
+      <div class="mock-table-wrap" id="mockTable"></div>
+    </div>
+  </section>
+
   <section class="view" id="view-ox" hidden>
     <div class="form-sheet">
       <div class="sheet-head">
         <h1>OX 장부</h1>
-        <p>선지 옆 ⊕ 버튼으로 담아 둔 지문이에요. 이 브라우저에 저장됩니다.</p>
+        <p id="oxWhere">선지 옆 ⊕ 버튼으로 담아 둔 지문이에요. 이 브라우저에 저장됩니다.</p>
       </div>
       <div class="ox-actions">
         <button class="btn primary" id="oxStartBtn">OX 풀기</button>
@@ -119,6 +150,34 @@
         </div>
       </div>
       <ul class="ledger" id="oxList"></ul>
+    </div>
+  </section>
+
+  <!-- INBOX -->
+  <section class="view" id="view-inbox" hidden>
+    <div class="form-sheet">
+      <div class="sheet-head">
+        <h1>질문게시판</h1>
+        <p id="inboxSub">기출 문제·선지에 대한 질문과 건의사항, 운영자 답변을 누구나 볼 수 있어요.</p>
+      </div>
+      <div class="ox-actions">
+        <div class="seg" id="inboxSeg">
+          <button data-tab="all" class="on">전체</button>
+          <button data-tab="open">미답변</button>
+          <button data-tab="mine">내 질문</button>
+        </div>
+        <button class="btn primary" id="suggestBtn">질문 남기기</button>
+      </div>
+      <div class="board-filter">
+        <select id="fKind" aria-label="종류"><option value="">모든 종류</option><option value="problem">문제 질문</option><option value="option">선지 질문</option><option value="suggestion">건의사항</option></select>
+        <select id="fYear" aria-label="연도"><option value="">모든 연도</option></select>
+        <select id="fNo" aria-label="문항"><option value="">모든 문항</option></select>
+        <select id="fOpt" aria-label="선지" disabled><option value="">모든 선지</option></select>
+        <input type="search" id="fText" placeholder="내용·답변·지문 검색" aria-label="검색어">
+        <button class="linkish" id="fReset" type="button">초기화</button>
+      </div>
+      <p class="inbox-hint" id="inboxHint"></p>
+      <ul class="inq-list" id="inqList"></ul>
     </div>
   </section>
 
@@ -140,20 +199,136 @@
 <aside class="drawer" id="drawer" aria-hidden="true">
   <div class="drawer-panel" role="dialog" aria-label="히스토리">
     <div class="drawer-head">
-      <h2>이번 세션 히스토리</h2>
+      <h2 id="histTitle">이번 세션 히스토리</h2>
       <button class="x" id="drawerClose" aria-label="닫기">×</button>
     </div>
-    <div class="hist-stats" id="histStats"></div>
-    <div class="drawer-actions">
-      <button class="btn primary" id="retryWrongBtn">틀린 문제만 다시 풀기</button>
-      <button class="btn ghost" id="clearHistBtn">기록 비우기</button>
+    <div class="hist-tabs seg" id="histTabs">
+      <button data-htab="log" class="on">풀이 기록</button>
+      <button data-htab="sess">저장한 세션 <span class="pill" id="sessCount">0</span></button>
     </div>
-    <ol class="hist-list" id="histList"></ol>
+    <div class="hist-pane" id="histLogPane">
+      <div class="hist-stats" id="histStats"></div>
+      <div class="drawer-actions">
+        <button class="btn primary" id="retryWrongBtn">틀린 문제만 다시 풀기</button>
+        <button class="btn ghost" id="clearHistBtn">기록 비우기</button>
+      </div>
+      <ol class="hist-list" id="histList"></ol>
+    </div>
+    <div class="hist-pane" id="histSessPane" hidden>
+      <div class="sess-save">
+        <div class="sess-cur" id="sessCur"></div>
+        <div class="sess-form">
+          <input id="sessName" maxlength="60" placeholder="세션 이름" aria-label="세션 이름">
+          <button class="btn primary" id="sessSaveBtn">세션으로 저장</button>
+        </div>
+        <p class="sess-where" id="sessWhere"></p>
+      </div>
+      <ol class="sess-list" id="sessList"></ol>
+    </div>
   </div>
 </aside>
 
+<!-- AUTH MODAL -->
+<div class="modal" id="authModal" hidden>
+  <div class="modal-panel form-sheet" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+    <div class="sheet-head">
+      <h1 id="authTitle">로그인</h1>
+      <p id="authSub">로그인하면 풀이 기록과 OX 장부가 계정에 저장돼 다른 기기에서도 이어져요.</p>
+      <button class="x modal-x" id="authClose" aria-label="닫기">×</button>
+    </div>
+
+    <!-- 로그아웃 상태 -->
+    <div id="authOut" class="auth-body">
+      <div class="seg auth-seg" id="authModeSeg">
+        <button type="button" data-mode="signin" class="on">로그인</button>
+        <button type="button" data-mode="signup">회원가입</button>
+        <button type="button" data-mode="magic">메일 링크</button>
+      </div>
+      <form id="authForm" novalidate>
+        <label class="field"><span>이메일</span><input type="email" id="authEmail" autocomplete="email" required placeholder="name@example.com"></label>
+        <label class="field" id="pwField"><span>비밀번호</span><input type="password" id="authPw" autocomplete="current-password" minlength="6" placeholder="6자 이상"></label>
+        <p class="hint" id="authModeHint"></p>
+        <button class="btn primary auth-submit" id="authSubmit" type="submit">로그인</button>
+        <button class="linkish" type="button" id="forgotBtn">비밀번호를 잊었어요</button>
+      </form>
+      <div class="oauth" id="oauthBox" hidden>
+        <div class="or"><span>또는</span></div>
+        <button class="btn oauth-btn google" data-provider="google" hidden>Google로 계속하기</button>
+        <button class="btn oauth-btn kakao" data-provider="kakao" hidden>카카오로 계속하기</button>
+      </div>
+    </div>
+
+    <!-- 비밀번호 재설정 (메일 링크로 들어왔을 때) -->
+    <form id="authReset" class="auth-body" hidden novalidate>
+      <label class="field"><span>새 비밀번호</span><input type="password" id="resetPw" autocomplete="new-password" minlength="6" placeholder="6자 이상"></label>
+      <button class="btn primary auth-submit" type="submit">비밀번호 바꾸기</button>
+    </form>
+
+    <!-- 로그인 상태 -->
+    <div id="authIn" class="auth-body" hidden>
+      <table class="form-table">
+        <tr><th>계　　정</th><td id="authEmailShow"></td></tr>
+        <tr><th>저장 위치</th><td>풀이 기록 <b id="acctHist">0</b>건 · OX 지문 <b id="acctOx">0</b>개가 계정에 저장돼 있어요.</td></tr>
+      </table>
+      <div class="sheet-foot"><button class="btn" id="signOutBtn">로그아웃</button></div>
+    </div>
+
+    <p class="auth-msg" id="authMsg" role="status"></p>
+    <p class="auth-legal">로그인하면 <a href="privacy.html" target="_blank" rel="noopener">개인정보처리방침</a>에 동의하는 것으로 봐요.</p>
+  </div>
+</div>
+
+<!-- ASK MODAL -->
+<div class="modal" id="askModal" hidden>
+  <form class="modal-panel form-sheet" id="askForm" role="dialog" aria-modal="true" aria-labelledby="askTitle" novalidate>
+    <div class="sheet-head">
+      <h1 id="askTitle">질문 남기기</h1>
+      <p>질문은 질문게시판에 공개되고, 운영자가 답변을 달아 드려요. 이메일은 공개되지 않아요.</p>
+      <button type="button" class="x modal-x" id="askClose" aria-label="닫기">×</button>
+    </div>
+    <div class="auth-body">
+      <div class="seg auth-seg" id="askKindSeg">
+        <button type="button" data-kind="problem" class="on">문제 질문</button>
+        <button type="button" data-kind="option">선지 질문</button>
+        <button type="button" data-kind="suggestion">건의사항</button>
+      </div>
+      <div class="ask-pick" id="askPick" hidden>
+        <span>어느 문제인가요?</span>
+        <select id="askYear" aria-label="연도"></select>
+        <select id="askNo" aria-label="문항"></select>
+      </div>
+      <div class="ask-target" id="askTarget"></div>
+      <label class="field" id="askOptField"><span>어느 선지인가요?</span><select id="askOpt"></select></label>
+      <div class="ask-quote" id="askQuote"></div>
+      <label class="field"><span id="askBodyLabel">질문 내용</span><textarea id="askBody" rows="5" maxlength="2000" placeholder="궁금한 점을 적어 주세요."></textarea></label>
+      <p class="hint ask-len"><span id="askLen">0</span> / 2000</p>
+      <button class="btn primary auth-submit" id="askSubmit" type="submit">보내기</button>
+    </div>
+    <p class="auth-msg" id="askMsg" role="status"></p>
+  </form>
+</div>
+
+<!-- QUESTION LIST MODAL -->
+<div class="modal" id="qlistModal" hidden>
+  <div class="modal-panel form-sheet qlist-panel" role="dialog" aria-modal="true" aria-labelledby="qlistTitle">
+    <div class="sheet-head">
+      <h1 id="qlistTitle">질문 목록</h1>
+      <p id="qlistSub"></p>
+      <button type="button" class="x modal-x" id="qlistClose" aria-label="닫기">×</button>
+    </div>
+    <div class="ask-quote qlist-quote" id="qlistQuote"></div>
+    <ul class="inq-list qlist" id="qlistList"></ul>
+    <div class="sheet-foot">
+      <button class="btn primary" id="qlistAsk">이 선지에 질문하기</button>
+      <button class="btn" id="qlistBoard">게시판에서 보기</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast" role="status"></div>
-<footer class="foot">자료: 금융감독원 공인회계사시험 기출문제(1형) · 정/부 표시는 확정답안 기준</footer>
+<footer class="foot">자료: 금융감독원 공인회계사시험 기출문제(1형) · 정/부 표시는 확정답안 기준 · <a href="privacy.html">개인정보처리방침</a></footer>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js"></script>
+<script src="supabase-config.js"></script>
 <script src="questions.js"></script>
 <script src="app.js"></script>
 </body>
