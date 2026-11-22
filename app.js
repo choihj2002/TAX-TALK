@@ -1228,7 +1228,8 @@
   function setAskQ(qid, label) {
     ask.qid = qid;
     const q = qid && byId.get(qid);
-    $$('#askKindSeg button').forEach((b) => { b.disabled = !q && b.dataset.kind !== 'suggestion'; });
+    const canPick = !$('#askPick').hidden;
+    $$('#askKindSeg button').forEach((b) => { b.disabled = !q && !canPick && b.dataset.kind !== 'suggestion'; });
     $('#askOpt').innerHTML = q ? optChoices(q).map((c) => `<option value="${esc(c.value)}">${labelShow(c.value)} ${esc(c.text.slice(0, 40))}${c.text.length > 40 ? '…' : ''}</option>`).join('') : '';
     if (label) $('#askOpt').value = label;
     return q;
@@ -1243,13 +1244,13 @@
     const y = Number($('#askYear').value); const n = Number($('#askNo').value);
     const q = y && n ? Q.find((x) => x.year === y && x.no === n) : null;
     setAskQ(q ? q.id : null, null);
-    setAskKind(q ? (ask.kind === 'suggestion' ? 'problem' : ask.kind) : 'suggestion');
+    setAskKind(q && ask.kind === 'suggestion' ? 'problem' : ask.kind);
   }
   function openAsk({ qid = null, label = null, kind = 'problem', pick = false } = {}) {
     if (!sb) { toast('질문 기능을 불러오지 못했어요. 새로고침해 주세요.'); return; }
     if (!state.user) { toast('질문을 남기려면 먼저 로그인해 주세요'); openAuth(); return; }
-    const q = setAskQ(qid, label);
     $('#askPick').hidden = !pick;
+    const q = setAskQ(qid, label);
     if (pick) {
       const years = [...new Set(Q.map((x) => x.year))].sort((a, b) => b - a);
       $('#askYear').innerHTML = '<option value="">연도 (건의사항은 비워 두기)</option>' + years.map((y) => `<option value="${y}">${y}년</option>`).join('');
@@ -1257,7 +1258,7 @@
       $('#askNo').value = q ? String(q.no) : '';
     }
     $('#askBody').value = ''; $('#askLen').textContent = '0'; $('#askMsg').textContent = ''; $('#askMsg').className = 'auth-msg';
-    setAskKind(q ? kind : 'suggestion');
+    setAskKind(q || pick ? kind : 'suggestion');
     $('#askModal').hidden = false;
     setTimeout(() => $('#askBody').focus(), 30);
   }
@@ -1266,9 +1267,10 @@
     ask.kind = k;
     $$('#askKindSeg button').forEach((b) => b.classList.toggle('on', b.dataset.kind === k));
     const q = ask.qid && byId.get(ask.qid);
-    $('#askTarget').hidden = k === 'suggestion' || !q;
-    $('#askTarget').textContent = q ? `${q.year}년 ${q.no}번 · ${SUBJ[q.subject]} · ${q.type === '가나다' ? 'ㄱㄴㄷ' : '오지선다'}` : '';
-    $('#askOptField').hidden = k !== 'option';
+    $('#askTarget').hidden = k === 'suggestion';
+    $('#askTarget').textContent = q ? `${q.year}년 ${q.no}번 · ${SUBJ[q.subject]} · ${q.type === '가나다' ? 'ㄱㄴㄷ' : '오지선다'}` : '위에서 연도와 문항을 골라 주세요.';
+    $('#askOptField').hidden = k !== 'option' || !q;
+    $('#askYear').options.length && ($('#askYear').options[0].textContent = k === 'suggestion' ? '연도 (건의사항은 비워 두기)' : '연도');
     $('#askBodyLabel').textContent = k === 'suggestion' ? '건의 내용' : '질문 내용';
     $('#askBody').placeholder = k === 'suggestion' ? '사이트에 바라는 점이나 오류를 알려 주세요.' : '헷갈리는 부분이나 근거 조문이 궁금한 점을 적어 주세요.';
     updateAskQuote();
@@ -1286,6 +1288,7 @@
     const m = $('#askMsg');
     if (!body) { m.textContent = '내용을 적어 주세요.'; m.className = 'auth-msg err'; return; }
     if (!state.user) { closeAsk(); openAuth(); return; }
+    if (ask.kind !== 'suggestion' && !ask.qid) { m.textContent = '질문할 문제의 연도와 문항을 골라 주세요.'; m.className = 'auth-msg err'; return; }
     const row = { kind: ask.kind, body, question_id: ask.kind === 'suggestion' ? null : ask.qid, option_label: ask.kind === 'option' ? $('#askOpt').value : null };
     $('#askSubmit').disabled = true; m.textContent = '보내는 중…'; m.className = 'auth-msg';
     try {
