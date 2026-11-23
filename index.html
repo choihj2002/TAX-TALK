@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600;800&family=Noto+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20261122j">
+<link rel="stylesheet" href="style.css?v=20261123c">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><circle cx='32' cy='32' r='28' fill='none' stroke='%23b3261e' stroke-width='5'/><text x='32' y='42' font-size='28' text-anchor='middle' fill='%23b3261e' font-family='serif' font-weight='bold'>稅</text></svg>">
 </head>
 <body>
@@ -23,12 +23,15 @@
         <span class="brand-sub">공인회계사 1차 · 세법개론 기출 말문제 2017–2026</span>
       </span>
     </button>
+    <!-- 다른 사이트 주소가 바뀌면 아래 href만 고치면 돼요 -->
+    <a class="site-switch" href="https://corp-talk.netlify.app/" title="상법말문제로 가기 (같은 계정으로 로그인돼요)"><span class="sw-seal" aria-hidden="true">商</span>상법말문제<span class="sw-arrow" aria-hidden="true">→</span></a>
     <nav class="mast-nav">
       <button class="nav-btn" data-go="home">출제 설정</button>
       <button class="nav-btn" data-go="mock">모의고사</button>
       <button class="nav-btn" id="historyBtn">히스토리 <span class="pill" id="histCount">0</span></button>
       <button class="nav-btn" data-go="ox">OX 장부 <span class="pill" id="oxCount">0</span></button>
       <button class="nav-btn" data-go="inbox">질문게시판 <span class="pill" id="inqCount" hidden>0</span></button>
+      <button class="nav-btn" id="visitsBtn" hidden>방문자</button>
       <button class="nav-btn auth-btn" id="authBtn"><span class="dot" aria-hidden="true"></span><span id="authBtnText">로그인</span></button>
     </nav>
   </div>
@@ -160,7 +163,7 @@
     <div class="form-sheet">
       <div class="sheet-head">
         <h1>질문게시판</h1>
-        <p id="inboxSub">기출 문제·선지에 대한 질문과 건의사항, 연신내기린아의 답변을 누구나 볼 수 있어요.</p>
+        <p id="inboxSub">기출 문제·선지에 대한 질문과 연신내기린아의 답변은 누구나 볼 수 있어요. 건의사항은 비공개라 쓴 사람과 관리자만 볼 수 있어요.</p>
       </div>
       <div class="ox-actions">
         <div class="seg" id="inboxSeg">
@@ -319,6 +322,7 @@
       <div class="ask-target" id="askTarget"></div>
       <label class="field" id="askOptField"><span>어느 선지인가요?</span><select id="askOpt"></select></label>
       <div class="ask-quote" id="askQuote"></div>
+      <p class="hint ask-private" id="askPrivate" hidden>건의사항은 비공개예요. 관리자(연신내기린아)와 쓴 본인만 볼 수 있고, 다른 이용자에게는 보이지 않아요.</p>
       <label class="field"><span id="askBodyLabel">질문 내용</span><textarea id="askBody" rows="5" maxlength="2000" placeholder="궁금한 점을 적어 주세요."></textarea></label>
       <p class="hint ask-len"><span id="askLen">0</span> / 2000</p>
       <button class="btn primary auth-submit" id="askSubmit" type="submit">보내기</button>
@@ -344,11 +348,23 @@
   </div>
 </div>
 
+<div class="modal" id="visitsModal" hidden>
+  <div class="modal-panel form-sheet visits-panel" role="dialog" aria-modal="true" aria-labelledby="visitsTitle">
+    <div class="sheet-head">
+      <h1 id="visitsTitle">방문자 통계</h1>
+      <p>관리자만 볼 수 있어요. 방문자 수는 하루(한국 시간) 기준 브라우저 수예요.</p>
+      <button type="button" class="x modal-x" id="visitsClose" aria-label="닫기">×</button>
+    </div>
+    <div id="visitsBody" class="visits-body"><p class="hint">불러오는 중…</p></div>
+    <div class="sheet-foot"><button class="btn" id="visitsReload">새로고침</button></div>
+  </div>
+</div>
+
 <div class="toast" id="toast" role="status"></div>
 <footer class="foot">자료: 금융감독원 공인회계사시험 기출문제(1형) · 정/부 표시는 확정답안 기준 · <a href="privacy.html">개인정보처리방침</a></footer>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js"></script>
-<script src="supabase-config.js?v=20261122j"></script>
-<script src="questions.js?v=20261122j"></script>
-<script src="app.js?v=20261122j"></script>
+<script src="supabase-config.js?v=20261123c"></script>
+<script src="questions.js?v=20261123c"></script>
+<script src="app.js?v=20261123c"></script>
 </body>
 </html>

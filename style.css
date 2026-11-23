@@ -358,3 +358,33 @@ main{max-width:920px;margin:0 auto;padding:24px 16px 48px}
 .fc-expl{flex:1;font-size:13.5px;line-height:1.6;color:var(--ink)}
 @media (max-width:560px){.star-grid{grid-template-columns:1fr;padding:14px}.star-view{margin-left:0;width:100%}.flip-in{min-height:170px}}
 @media (prefers-reduced-motion:reduce){.flip-in{transition:none}}
+
+/* 방문자 통계 (관리자) */
+.visits-panel{width:min(560px,100%)}
+.visits-body{padding:16px 20px}
+.visits-sum{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.visits-sum>div{border:1px solid var(--rule);border-radius:4px;padding:8px 6px;text-align:center;background:#fff}
+.visits-sum span{display:block;font-size:12px;color:var(--ink-2)}
+.visits-sum b{display:block;font-size:22px;font-family:var(--mono);line-height:1.3}
+.visits-sum small{display:block;font-size:11px;color:var(--ink-2)}
+.visits-since{margin:10px 0 6px;font-size:12px}
+.visits-days{list-style:none;margin:0;padding:0;max-height:45vh;overflow:auto;border-top:1px solid var(--rule)}
+.visits-days li{display:grid;grid-template-columns:78px 1fr 92px;align-items:center;gap:8px;padding:5px 0;border-bottom:1px dashed var(--rule);font-size:13px}
+.visits-days .vd{font-family:var(--mono);color:var(--ink-2)}
+.visits-days .vbar{height:10px;background:var(--paper-2);border-radius:2px;overflow:hidden}
+.visits-days .vbar i{display:block;height:100%;background:var(--ink)}
+.visits-days .vn{text-align:right;font-family:var(--mono)}
+.visits-days .vn small{color:var(--ink-2);margin-left:2px}
+@media (max-width:560px){.visits-sum{grid-template-columns:repeat(3,1fr)}.visits-days li{grid-template-columns:82px 1fr 84px;font-size:12px}}
+.visits-days .vd{white-space:nowrap}
+
+/* 다른 사이트로 넘어가기 (오른쪽 위) */
+.site-switch{display:inline-flex;align-items:center;gap:7px;padding:5px 12px 5px 6px;border:1px solid rgba(255,255,255,.35);border-radius:999px;color:inherit;text-decoration:none;font-size:13px;font-weight:500;white-space:nowrap;transition:background .15s,border-color .15s}
+.site-switch:hover,.site-switch:focus-visible{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.7)}
+.site-switch .sw-seal{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;border:1.5px solid #e07a3c;color:#e07a3c;font-family:var(--serif);font-weight:800;font-size:13px;background:rgba(255,255,255,.06)}
+.site-switch .sw-arrow{opacity:.75}
+@media (max-width:560px){.site-switch{font-size:12px;padding:4px 10px 4px 5px}.site-switch .sw-seal{width:22px;height:22px;font-size:12px}}
+
+/* 비공개 건의사항 */
+.ask-private{margin:0 0 8px;padding:8px 10px;border:1px dashed var(--rule);border-radius:4px;background:var(--paper-2);font-size:13px}
+.tag.private{border-style:dashed;color:var(--ink-2)}

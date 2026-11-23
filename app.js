@@ -1,6 +1,8 @@
 (() => {
   'use strict';
   const SUBJ = { 국: '국세기본법', 법: '법인세법', 소: '소득세법', 부: '부가가치세법', 상: '상속세및증여세법', 지: '지방세법' };
+  // 세법말문제·상법말문제가 같은 Supabase 프로젝트(로그인)를 함께 쓴다. 문제 ID로 사이트를 구분한다(세법 '2026-01', 상법 'C2026-01').
+  const SITE = { key: 'tax', histLike: '2%', suggestionQid: null };
   const SUBJ_ORDER = ['국', '법', '소', '부', '상', '지'];
   const CIRC = ['①', '②', '③', '④', '⑤'];
   const GANA = { 'ㄱ': '가', 'ㄴ': '나', 'ㄷ': '다', 'ㄹ': '라', 'ㅁ': '마', 'ㅂ': '바' };
@@ -564,7 +566,7 @@
   // ---------- OX bank ----------
   function statementFor(key) {
     // key: "2026-01-3" or "2026-02-가"
-    const m = key.match(/^(\d{4}-\d{2})-(.+)$/);
+    const m = key.match(/^([A-Z]?\d{4}-\d{2})-(.+)$/);
     const q = byId.get(m[1]); const label = m[2];
     if (/^\d$/.test(label)) { const i = Number(label) - 1; return { id: q.id, label, text: q.options[i], ok: q.optOk[i], stem: q.stem }; }
     const it = q.items.find((x) => (GANA[x.label] || x.label) === label);
@@ -733,7 +735,7 @@
       if (error) throw error;
     },
     async clearHistory() {
-      const { error } = await sb.from('quiz_history').delete().eq('user_id', state.user.id);
+      const { error } = await sb.from('quiz_history').delete().eq('user_id', state.user.id).like('question_id', SITE.histLike); // 다른 사이트 기록은 두기
       if (error) throw error;
     },
     async addOx(list) {
@@ -753,7 +755,8 @@
     async loadSessions() {
       const { data, error } = await sb.from('quiz_sessions').select('id,name,started_at,ended_at,queue,entries,kind,mock_no,template_year').order('started_at', { ascending: false });
       if (error) throw error;
-      return data.map((r) => ({ id: r.id, name: r.name, startedAt: Date.parse(r.started_at), endedAt: Date.parse(r.ended_at), queue: r.queue || [], entries: r.entries || [], kind: r.kind || 'normal', mockNo: r.mock_no, templateYear: r.template_year }));
+      return data.map((r) => ({ id: r.id, name: r.name, startedAt: Date.parse(r.started_at), endedAt: Date.parse(r.ended_at), queue: r.queue || [], entries: r.entries || [], kind: r.kind || 'normal', mockNo: r.mock_no, templateYear: r.template_year }))
+        .filter((ss) => ss.queue.some((id) => byId.has(id))); // 이 사이트 문제로 만든 세션만
     },
     async addSession(ss) {
       const row = { user_id: state.user.id, name: ss.name, started_at: new Date(ss.startedAt).toISOString(), ended_at: new Date(ss.endedAt).toISOString(), queue: ss.queue, entries: ss.entries, kind: ss.kind || 'normal', mock_no: ss.mockNo || null, template_year: ss.templateYear || null };
@@ -772,7 +775,7 @@
   };
 
   function oxFromKey(key, at) {
-    const m = String(key).match(/^(\d{4}-\d{2})-/);
+    const m = String(key).match(/^([A-Z]?\d{4}-\d{2})-/);
     if (!m || !byId.has(m[1])) return null;
     try { return { key, ...statementFor(key), addedAt: at }; } catch { return null; }
   }
@@ -816,6 +819,7 @@
   }
   function leaveAccount() {
     state.user = null; state.isAdmin = false;
+    $('#visitsBtn').hidden = true; $('#visitsModal').hidden = true;
     state.history = SS.get('history', []);
     state.ox = LS.get('oxBank', []).filter((o) => byId.has(o.id));
     state.sessions = LS.get('quizSessions', []);
@@ -972,8 +976,10 @@
       history.replaceState(null, '', location.pathname);
     }
     if (!sb) return;
+    setTimeout(logVisit, 4000);
     sb.auth.onAuthStateChange((event, session) => {
       const user = session && session.user;
+      if (event === 'INITIAL_SESSION') setTimeout(logVisit, 0);
       // 콜백 안에서 바로 Supabase를 다시 호출하면 멈출 수 있어 다음 틱으로 미룸
       setTimeout(() => {
         if (event === 'PASSWORD_RECOVERY') { authView = 'reset'; renderAuth(); openAuth(); }
@@ -1030,7 +1036,8 @@
         out.push(...data);
         if (data.length < size) break;
       }
-      state.inq = out; state.inqLoaded = true;
+      // 이 사이트 문제에 달린 질문과 이 사이트 건의사항만
+      state.inq = out.filter((r) => (r.question_id ? byId.has(r.question_id) : null) || r.question_id === SITE.suggestionQid); state.inqLoaded = true;
     } catch (err) { console.error(err); state.inqError = true; }
     updateInqPill();
     if (!$('#view-inbox').hidden) renderBoard();
@@ -1041,8 +1048,70 @@
       const { data, error } = await sb.from('admins').select('user_id').eq('user_id', user.id).maybeSingle();
       state.isAdmin = !error && !!data;
     } catch { state.isAdmin = false; }
+    $('#visitsBtn').hidden = !state.isAdmin;
     updateInqPill(); if (!$('#view-inbox').hidden) renderBoard();
   }
+  // ---------- 방문자 집계 ----------
+  // 브라우저마다 무작위 ID 하나를 두고, 페이지를 열 때 한 번 기록한다(세법말문제_visits_setup.sql).
+  let visitLogged = false;
+  function visitorId() {
+    let id = LS.get('visitorId', null);
+    if (!id || !/^[0-9a-f-]{36}$/i.test(id)) {
+      id = (window.crypto && crypto.randomUUID) ? crypto.randomUUID()
+        : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 3 | 8)).toString(16); });
+      LS.set('visitorId', id);
+    }
+    return id;
+  }
+  async function logVisit() {
+    if (visitLogged || !sb) return;
+    visitLogged = true;
+    try {
+      const { error } = await sb.rpc('log_visit', { p_visitor: visitorId(), p_site: SITE.key });
+      if (error) console.warn('방문 기록 실패:', error.message);
+    } catch (err) { console.warn('방문 기록 실패', err); }
+  }
+  const fmtDay = (d) => { const [y, m, dd] = String(d).slice(0, 10).split('-'); const w = '일월화수목금토'[new Date(+y, m - 1, +dd).getDay()]; return `${+m}/${+dd} (${w})`; };
+  async function loadVisits() {
+    const body = $('#visitsBody');
+    body.innerHTML = '<p class="hint">불러오는 중…</p>';
+    try {
+      const { data, error } = await sb.rpc('visit_stats', { p_days: 30, p_site: SITE.key });
+      if (error) throw error;
+      const st = typeof data === 'string' ? JSON.parse(data) : data;
+      const daily = st.daily || [];
+      const t = daily[0] || { visitors: 0, hits: 0 };
+      const y = daily[1] || { visitors: 0, hits: 0 };
+      const max = Math.max(1, ...daily.map((d) => d.visitors));
+      body.innerHTML = `
+        <div class="visits-sum">
+          <div><span>오늘</span><b>${t.visitors}</b><small>조회 ${t.hits}</small></div>
+          <div><span>어제</span><b>${y.visitors}</b><small>조회 ${y.hits}</small></div>
+          <div><span>최근 7일</span><b>${st.week}</b><small>중복 제외</small></div>
+          <div><span>최근 30일</span><b>${st.month}</b><small>중복 제외</small></div>
+          <div><span>누적</span><b>${st.total}</b><small>조회 ${st.total_hits}</small></div>
+        </div>
+        <p class="hint visits-since">${st.since ? `집계 시작 ${esc(String(st.since))} · ` : ''}막대는 날짜별 방문자 수, 괄호는 그중 로그인한 방문자 수, 마지막 숫자는 조회수예요.</p>
+        <ul class="visits-days">${daily.map((d) => `
+          <li><span class="vd">${fmtDay(d.day)}</span><span class="vbar"><i style="width:${(d.visitors / max) * 100}%"></i></span><span class="vn">${d.visitors}<small>(${d.members})</small> · ${d.hits}</span></li>`).join('')}
+        </ul>`;
+    } catch (err) {
+      console.error(err);
+      const msg = String((err && err.message) || err);
+      body.innerHTML = /not admin/i.test(msg) ? '<p class="auth-msg err">관리자 계정으로 로그인해야 볼 수 있어요.</p>'
+        : /visit_stats|function|schema cache|p_site/i.test(msg)
+        ? '<p class="auth-msg err">방문자 집계가 아직 설정되지 않았어요. Supabase SQL Editor에서 <b>세법말문제_visits_setup.sql</b>을 실행해 주세요.</p>'
+        : `<p class="auth-msg err">통계를 불러오지 못했어요: ${esc(msg)}</p>`;
+    }
+  }
+  function openVisits() { if (!sb || !state.isAdmin) return; $('#visitsModal').hidden = false; loadVisits(); }
+  function closeVisits() { $('#visitsModal').hidden = true; }
+  $('#visitsBtn').addEventListener('click', openVisits);
+  $('#visitsClose').addEventListener('click', closeVisits);
+  $('#visitsReload').addEventListener('click', loadVisits);
+  $('#visitsModal').addEventListener('click', (e) => { if (e.target.id === 'visitsModal') closeVisits(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#visitsModal').hidden) closeVisits(); });
+
   const seenKey = () => 'inqSeen:' + (state.user ? state.user.id : '');
   function updateInqPill() {
     const pill = $('#inqCount'); if (!pill) return;
@@ -1095,10 +1164,12 @@
     const kind = $('#fKind').value; const y = Number($('#fYear').value); const no = Number($('#fNo').value);
     const opt = $('#fOpt').value; const text = $('#fText').value.trim().toLowerCase();
     return state.inq.filter((r) => {
+      // 건의사항은 비공개: 관리자와 쓴 본인만 (서버 RLS로도 막음)
+      if (r.kind === 'suggestion' && !state.isAdmin && !(state.user && r.user_id === state.user.id)) return false;
       if (board.tab === 'open' && r.answer) return false;
       if (board.tab === 'mine' && (!state.user || r.user_id !== state.user.id)) return false;
       if (kind && r.kind !== kind) return false;
-      const q = r.question_id ? byId.get(r.question_id) : null;
+      const q = r.question_id ? (byId.get(r.question_id) || null) : null;
       if ((y || no) && !q) return false;
       if (y && q.year !== y) return false;
       if (no && q.no !== no) return false;
@@ -1129,7 +1200,7 @@
       const tgt = targetText(r); const quote = quoteFor(r);
       const isNew = mine && !state.isAdmin && r.answered_at && Date.parse(r.answered_at) > LS.get(seenKey(), 0);
       return `<li data-inq="${r.id}">
-        <div class="inq-head"><span class="tag${r.kind === 'suggestion' ? '' : ' subj'}">${KIND[r.kind] || r.kind}</span>${tgt ? `<button class="inq-target" data-jump-q="${esc(r.question_id)}" title="이 문제 풀어 보기">${esc(tgt)}</button>` : ''}${isNew ? '<span class="inq-new">새 답변</span>' : ''}<span class="who">${esc(r.author || '회원')}${mine ? ' (나)' : ''}</span><span class="when">${fmtTime(r.created_at)}</span></div>
+        <div class="inq-head"><span class="tag${r.kind === 'suggestion' ? '' : ' subj'}">${KIND[r.kind] || r.kind}</span>${r.kind === 'suggestion' ? '<span class="tag private" title="관리자와 쓴 본인만 볼 수 있어요">비공개</span>' : ''}${tgt ? `<button class="inq-target" data-jump-q="${esc(r.question_id)}" title="이 문제 풀어 보기">${esc(tgt)}</button>` : ''}${isNew ? '<span class="inq-new">새 답변</span>' : ''}<span class="who">${esc(r.author || '회원')}${mine ? ' (나)' : ''}</span><span class="when">${fmtTime(r.created_at)}</span></div>
         ${quote ? `<div class="inq-quote">${esc(quote)}</div>` : ''}
         <div class="inq-body">${esc(r.body)}</div>
         ${r.answer ? `<div class="inq-ans"><b>연신내기린아 답변 · ${fmtTime(r.answered_at)}</b>${esc(r.answer)}</div>` : '<div class="inq-wait">답변 대기 중</div>'}
@@ -1272,6 +1343,7 @@
     $('#askOptField').hidden = k !== 'option' || !q;
     $('#askYear').options.length && ($('#askYear').options[0].textContent = k === 'suggestion' ? '연도 (건의사항은 비워 두기)' : '연도');
     $('#askBodyLabel').textContent = k === 'suggestion' ? '건의 내용' : '질문 내용';
+    $('#askPrivate').hidden = k !== 'suggestion';
     $('#askBody').placeholder = k === 'suggestion' ? '사이트에 바라는 점이나 오류를 알려 주세요.' : '헷갈리는 부분이나 근거 조문이 궁금한 점을 적어 주세요.';
     updateAskQuote();
   }
@@ -1289,7 +1361,7 @@
     if (!body) { m.textContent = '내용을 적어 주세요.'; m.className = 'auth-msg err'; return; }
     if (!state.user) { closeAsk(); openAuth(); return; }
     if (ask.kind !== 'suggestion' && !ask.qid) { m.textContent = '질문할 문제의 연도와 문항을 골라 주세요.'; m.className = 'auth-msg err'; return; }
-    const row = { kind: ask.kind, body, question_id: ask.kind === 'suggestion' ? null : ask.qid, option_label: ask.kind === 'option' ? $('#askOpt').value : null };
+    const row = { kind: ask.kind, body, question_id: ask.kind === 'suggestion' ? SITE.suggestionQid : ask.qid, option_label: ask.kind === 'option' ? $('#askOpt').value : null };
     $('#askSubmit').disabled = true; m.textContent = '보내는 중…'; m.className = 'auth-msg';
     try {
       const { data, error } = await sb.from('inquiries').insert(row)
